@@ -3,7 +3,7 @@
 import type { Context } from '@deepseek-ai/cordis'
 import type {
   DirectoryListing, IApiClient, RpcError,
-  SessionId, WorkspaceId, WorkspaceView,
+  SessionId, WorkspaceFileItem, WorkspaceId, WorkspaceView,
 } from '@deepseek-ai/dsh-api-remotes/client'
 import type { SnapshotStore } from '../contract/store.ts'
 import { createSnapshotStore } from '../contract/store.ts'
@@ -223,6 +223,23 @@ export class WorkspaceRuntime implements IWorkspaces {
   async listDirectory(path?: string, signal?: AbortSignal): Promise<DirectoryListing> {
     const response = await this.api.host.listDirectory(path === undefined ? {} : { path }, signal)
     if (!response.result.ok) throw new DirectoryBrowseError(response.result.error)
+    return response.result.value
+  }
+
+  /**
+   * Search file and directory paths below one Session's recorded working directory.
+   * @param sessionId - Session whose cwd bounds the search.
+   * @param query - Empty for a top-level page; otherwise a relative path fragment.
+   * @param signal - Cancels the scan when a newer input query replaces it.
+   * @returns bounded, workspace-relative candidate paths.
+   */
+  async searchWorkspaceFiles(
+    sessionId: SessionId,
+    query: string,
+    signal?: AbortSignal,
+  ): Promise<{ items: WorkspaceFileItem[]; hasMore: boolean }> {
+    const response = await this.api.sessions.searchWorkspaceFiles({ sessionId, query }, signal)
+    if (!response.result.ok) throw new Error(`workspace file search failed: ${response.result.error.message}`)
     return response.result.value
   }
 

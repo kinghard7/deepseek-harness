@@ -2218,6 +2218,30 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
           hasMore: matches.length > SESSION_SEARCH_RESULT_LIMIT,
         })
       },
+      searchWorkspaceFiles: (request, signal) => {
+        if (signal.aborted) {
+          return err(request, {
+            code: 'cancelled',
+            message: 'fixture workspace file search was aborted',
+            details: {},
+          })
+        }
+        if (!sessions.some(session => session.sessionId === request.payload.sessionId)) {
+          return err(request, {
+            code: 'session-not-found',
+            message: `no session ${String(request.payload.sessionId)}`,
+            details: { sessionId: request.payload.sessionId },
+          })
+        }
+        return ok(request, {
+          items: [
+            { path: 'README.md', kind: 'file' as const },
+            { path: 'src', kind: 'directory' as const },
+            { path: 'src/index.ts', kind: 'file' as const },
+          ].filter(item => request.payload.query === '' || item.path.toLocaleLowerCase().includes(request.payload.query.toLocaleLowerCase())),
+          hasMore: false,
+        })
+      },
       create: async (request) => {
         const workspace = request.payload.workspaceId === undefined
           ? undefined
@@ -3079,6 +3103,7 @@ export class FixtureApiClient extends AbstractApiClient {
     switch (method) {
       case 'session.list': return this.api.sessions.list(request)
       case 'session.search': return this.api.sessions.search(request, signal)
+      case 'session.searchWorkspaceFiles': return this.api.sessions.searchWorkspaceFiles(request, signal)
       case 'session.create': return this.api.sessions.create(request)
       case 'session.history': return this.api.sessions.history(request)
       case 'session.models': return this.api.sessions.models(request)

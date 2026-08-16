@@ -4,6 +4,7 @@ import { SlotRegistry } from '@deepseek-ai/dsh-client-runtime/client'
 import { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
 import { usePinnedBrowserLanguages } from '@deepseek-ai/dsh-client-test-runtime'
 import { apply, inject } from '@deepseek-ai/dsh-client-ui-workspace/client'
+import type { InputTriggerSource } from '@deepseek-ai/dsh-client-ui-input-trigger/client'
 import type { WorkspaceBrowserInjected, WorkspacePickerInjected } from '@deepseek-ai/dsh-client-ui-workspace/client'
 import { WorkspaceBrowser } from '../src/client/WorkspaceBrowser.tsx'
 import { WorkspacePicker } from '../src/client/WorkspacePicker.tsx'
@@ -21,6 +22,15 @@ async function bench() {
     title: 'new', sessionIds: [], createdAt: '0', updatedAt: '0',
   }))
   const startSession = vi.fn()
+  const searchWorkspaceFiles = vi.fn(async () => ({
+    items: [
+      { path: 'src', kind: 'directory' as const },
+      { path: 'src/index.ts', kind: 'file' as const },
+    ],
+    hasMore: false,
+  }))
+  const unregisterSource = vi.fn()
+  const registerSource = vi.fn<(source: InputTriggerSource) => () => void>(() => unregisterSource)
   const rename = vi.fn(async () => ({}))
   const insertSessionBefore = vi.fn(async () => ({}))
   const open = vi.fn()
@@ -33,13 +43,14 @@ async function bench() {
   const binding = vi.fn(() => ({ session: { rename: renameSession } }))
   const fork = vi.fn(async () => 'forked' as never)
   ctx.provide('workspaces', {
-    create, startSession, rename, insertSessionBefore,
+    create, startSession, rename, insertSessionBefore, searchWorkspaceFiles,
   } as never)
+  ctx.provide('inputTriggers', { registerSource } as never)
   ctx.provide('sessions', { open, clear, search, searchResultLimit: 20, binding, fork } as never)
   const locale = new LocaleRuntime(ctx)
   ctx.provide('locale', locale)
   return {
-    ctx, slots: ctx.get('slots') as SlotRegistry, locale, create, startSession, rename,
+    ctx, slots: ctx.get('slots') as SlotRegistry, locale, create, startSession, searchWorkspaceFiles, registerSource, unregisterSource, rename,
     insertSessionBefore, open, clear, search, renameSession, binding, fork,
   }
 }
@@ -54,7 +65,23 @@ function declare(slots: SlotRegistry, ...names: HoleName[]): () => void {
 
 describe('ui-workspace apply', () => {
   it('declares the services it drives', () => {
-    expect(inject).toEqual(['slots', 'sessions', 'workspaces', 'locale'])
+    expect(inject).toEqual(['slots', 'sessions', 'workspaces', 'locale', 'inputTriggers'])
+  })
+
+  it('registers a workspace-bound @ source that inserts relative paths', async () => {
+    const b = await bench()
+    await b.ctx.plugin({ inject: [...inject], apply }).await()
+    expect(b.registerSource).toHaveBeenCalledTimes(1)
+    const source = b.registerSource.mock.calls[0]![0]
+    expect(source).toMatchObject({ trigger: '@', name: 'workspace-file', order: -10 })
+    await expect(source.candidates({ sessionId: 'session' as never }, {
+      query: 'index', position: 'inline', signal: new AbortController().signal,
+    })).resolves.toEqual([
+      { name: 'src', description: '目录' },
+      { name: 'src/index.ts', description: '文件' },
+    ])
+    expect(b.searchWorkspaceFiles).toHaveBeenCalledWith('session', 'index', expect.any(AbortSignal))
+    expect(source.onPick({ candidate: { name: 'src/index.ts' } } as never)).toEqual({ text: '@src/index.ts ' })
   })
 
   it('registers browser and pickers for declarations arriving before or after apply', async () => {
@@ -159,6 +186,7 @@ describe('ui-workspace apply', () => {
     const fiber = b.ctx.plugin({ inject: [...inject], apply })
     await fiber.await()
     await fiber.dispose()
+    expect(b.unregisterSource).toHaveBeenCalledTimes(1)
     expect(b.slots.entries('sidebar.workspaces')).toHaveLength(0)
     expect(b.slots.entries('conversation.hero.workspace')).toHaveLength(0)
     // expect(b.slots.entries('conversation.empty.workspace')).toHaveLength(0)

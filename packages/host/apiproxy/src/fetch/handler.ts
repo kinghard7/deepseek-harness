@@ -26,6 +26,7 @@ import {
   sessionPromptRequestSchema,
   sessionRenameRequestSchema,
   sessionSearchRequestSchema,
+  sessionSearchWorkspaceFilesRequestSchema,
   sessionSelectModelRequestSchema,
   sessionUpdateQueueRequestSchema,
 } from '../api/sessions.schema.ts'
@@ -90,6 +91,7 @@ type UnaryRoutes = {
 const UNARY_ROUTES: UnaryRoutes = {
   'session.list': { schema: sessionListRequestSchema, invoke: (api, r) => api.sessions.list(r) },
   'session.search': { schema: sessionSearchRequestSchema, invoke: (api, r, signal) => api.sessions.search(r, signal) },
+  'session.searchWorkspaceFiles': { schema: sessionSearchWorkspaceFilesRequestSchema, invoke: (api, r, signal) => api.sessions.searchWorkspaceFiles(r, signal) },
   'session.create': { schema: sessionCreateRequestSchema, invoke: (api, r) => api.sessions.create(r) },
   'session.history': { schema: sessionHistoryRequestSchema, invoke: (api, r) => api.sessions.history(r) },
   'session.models': { schema: sessionModelsRequestSchema, invoke: (api, r) => api.sessions.models(r) },

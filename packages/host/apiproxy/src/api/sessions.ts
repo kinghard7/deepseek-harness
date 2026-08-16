@@ -228,6 +228,17 @@ export interface SessionSearchItem {
   snippet: string
 }
 
+/** Fixed maximum number of paths in one browser file-reference response. */
+export const WORKSPACE_FILE_SEARCH_RESULT_LIMIT = 100
+
+/** One workspace-relative path offered by the browser's @ file-reference source. */
+export interface WorkspaceFileItem {
+  /** Path relative to the current session working directory, with `/` separators. */
+  path: string
+  /** Whether the path can be traversed or read. */
+  kind: 'directory' | 'file'
+}
+
 /** Session-domain unary methods (the map keys session.* of RpcMethodMap). */
 export interface SessionsApi {
   /** Lists persisted sessions (updatedAt descending). v1 returns everything; cursor is a reserved seat, unimplemented. */
@@ -242,6 +253,16 @@ export interface SessionsApi {
     request: RpcRequest<{ query: string }>,
     signal: AbortSignal,
   ): Promise<RpcResponse<{ items: SessionSearchItem[]; hasMore: boolean }>>
+
+  /**
+   * Lists or filters paths below this session's `cwd`. Empty `query` returns
+   * one top-level page; a non-empty query searches descendants. The Host never
+   * returns an absolute path or follows a symbolic link.
+   */
+  searchWorkspaceFiles(
+    request: RpcRequest<{ sessionId: SessionId; query: string }>,
+    signal: AbortSignal,
+  ): Promise<RpcResponse<{ items: WorkspaceFileItem[]; hasMore: boolean }>>
 
   /**
    * Creates a real session and its idle agent. At most one of `workspaceId` /

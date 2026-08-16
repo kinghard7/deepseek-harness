@@ -150,6 +150,13 @@ export class TestWorkspaces implements IWorkspaces {
     return `${path}/${name}`
   }
 
+  searchWorkspaceFiles(sessionId: SessionId, query: string, signal?: AbortSignal): ReturnType<IWorkspaces['searchWorkspaceFiles']> {
+    this.calls.push({ method: 'searchWorkspaceFiles', args: [sessionId, query, signal] })
+    const stub = this.stubs.get('searchWorkspaceFiles')
+    if (stub !== undefined) return stub(sessionId, query, signal) as ReturnType<IWorkspaces['searchWorkspaceFiles']>
+    return Promise.resolve({ items: [], hasMore: false })
+  }
+
   /**
    * Rename a Workspace (recorded). The default echoes a minimal view.
    * @param workspaceId - target workspace.

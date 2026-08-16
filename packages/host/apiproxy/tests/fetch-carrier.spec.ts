@@ -41,6 +41,9 @@ function fakeApi(overrides: Partial<{ muxFrames: MuxFrame[]; hostFrames: HostFra
           },
         }
       },
+      async searchWorkspaceFiles(request) {
+        return { rpcId: request.rpcId, result: { ok: true, value: { items: [], hasMore: false } } }
+      },
       async create(request) {
         return { rpcId: request.rpcId, result: { ok: true, value: { sessionId: 's-new' as never } } }
       },

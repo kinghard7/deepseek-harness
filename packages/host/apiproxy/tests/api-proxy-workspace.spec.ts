@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, mkdtempSync, realpathSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, realpathSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
@@ -389,6 +389,21 @@ describe('session creation and Workspace membership', () => {
       sessionId: SessionId('session-missing-workspace'),
     }))
     expect(missing.result).toMatchObject({ ok: false, error: { code: 'workspace-not-found' } })
+  })
+
+  it('searches only the current session working directory and returns relative file paths', async () => {
+    const { api, root } = await harness()
+    const workspace = expectOk(await api.workspace.create(request({ path: stageDir(root, 'files') }))).workspace
+    mkdirSync(join(workspace.path, 'src'))
+    writeFileSync(join(workspace.path, 'src', 'index.ts'), 'export {}\n')
+    writeFileSync(join(workspace.path, 'README.md'), '# workspace\n')
+    const sessionId = SessionId('session-workspace-files')
+    expectOk(await api.sessions.create(request({ workspaceId: workspace.workspaceId, sessionId })))
+
+    expect(expectOk(await api.sessions.searchWorkspaceFiles(request({ sessionId, query: 'index' }), new AbortController().signal)))
+      .toEqual({ items: [{ path: 'src/index.ts', kind: 'file' }], hasMore: false })
+    expect((await api.sessions.searchWorkspaceFiles(request({ sessionId: SessionId('missing-session'), query: '' }), new AbortController().signal)).result)
+      .toMatchObject({ ok: false, error: { code: 'session-not-found', details: { sessionId: 'missing-session' } } })
   })
 
   it('retains a published session when attachment fails and repairs it on retry', async () => {

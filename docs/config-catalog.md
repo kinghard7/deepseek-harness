@@ -750,10 +750,20 @@ export interface Config {
    * @default 1024
    */
   coldBlankProbeMaxBytes?: number
+  /**
+   * Maximum workspace file-reference candidates returned to one Web query.
+   * @default 100
+   */
+  workspaceFileSearchMaxResults?: number
+  /**
+   * Maximum workspace entries inspected to satisfy one Web file-reference query.
+   * @default 10000
+   */
+  workspaceFileSearchMaxEntries?: number
 }
 ```
 
-Source: [`packages/host/apiproxy/src/index.ts:41`](../packages/host/apiproxy/src/index.ts)
+Source: [`packages/host/apiproxy/src/index.ts:45`](../packages/host/apiproxy/src/index.ts)
 
 <a id="deepseek-aidsh-host-directory-picker-browse"></a>
 

@@ -2,7 +2,7 @@
 
 [English](README.md) | 中文
 
-共享 Workspace 浏览器与选择器插件。`WorkspaceBrowser` 填充侧边栏的 `sidebar.workspaces` slot，`WorkspacePicker` 则填充页面局部 Session Intent 主视觉区的 `conversation.hero.workspace` slot；两个界面使用同一套 Workspace 菜单和添加流程。
+共享 Workspace 浏览器与选择器插件。`WorkspaceBrowser` 填充侧边栏的 `sidebar.workspaces` slot，`WorkspacePicker` 则填充页面局部 Session Intent 主视觉区的 `conversation.hero.workspace` slot；两个界面使用同一套 Workspace 菜单和添加流程。其浏览器 half 还注册 `@` 的 `workspace-file` source：候选项来自 Host 以 Session 为地址、以该 Session header 的 `cwd` 为根的有界路径查询；空查询显示一级路径页，非空路径片段则搜索后代。选择项会插入字面的相对 `@path` 引用，绝不读取文件内容。
 
 该浏览器通过全局运行时钩子将 Session 行渲染为分组或扁平形式，并负责 Workspace 添加／重命名／重排序以及 Session 重排序。每个 Workspace 会记住自身是关闭还是显示 Session；打开后默认显示五条 Session，其余条目通过临时的**展开其余**控件显示，而关闭并重新打开整个 Workspace 后会恢复为五条。从 Workspace 行创建 Session 时会先打开该分组，使 Session 状态到达后新行保持可见。Workspace 列表基线就绪后，浏览器持久化的展开状态与 Session 顺序记录只保留当前 Workspace id、Ungrouped 和单列表记账。视图选项把分组方式和每个记账各自的一份浏览器持久化 Session 顺序放在一起：真实 Workspace 从 `WorkspaceView.sessionIds` 初始化，Ungrouped 和跨 Workspace 的单列表则从最近更新时间顺序初始化。**手动排序**和**最近更新**在两种呈现方式下都可用。进入最近更新时会执行一次完整的时间排序，后续 user prompt 或 steer 会将对应 Session 置顶一次；进入手动排序则保留所有当前位置并停用后续置顶。两种模式下的拖拽都会编辑当前顺序；真实 Workspace 在手动模式下的拖拽还会更新 Host Session 记账，而 Ungrouped 和单列表因没有单一 Workspace 记账，其顺序始终只保存在浏览器本地。单列表没有父级层次，因此不显示空的左侧状态槽；Session 存在可见状态时仍保留该槽。无论采用哪种 Session 顺序，Workspace 拖拽顺序都由 Host 持久化。
 
@@ -22,11 +22,19 @@ Session 行渲染运行时的实时 `pendingInteraction` 分类：审批显示**
 
 ## 模型体验
 
-无。选择器属于浏览器界面；这里没有任何内容进入模型请求。
+### 用户显式的工作区文件引用
+
+#### 模型看到的内容
+
+用户选择 `@` 工作区文件候选项后，其工作区相对路径会作为字面的 `@path` 文本进入普通用户消息。浏览器不会读取文件内容，也不会将文本解析成额外的模型输入；Agent 需要该路径的内容时仍使用普通文件系统工具。
+
+#### Token 影响
+
+每个被选择的路径只在新用户消息中增加其字面文本。打开菜单和搜索候选项不会增加模型 token。
 
 #### KV Cache 影响
 
-无；该包既不组装也不发送提供方请求。
+仅追加：所选路径只出现在新用户消息中，不会修改此前的请求前缀。
 
 ## 已知限制与暂缓事项
 

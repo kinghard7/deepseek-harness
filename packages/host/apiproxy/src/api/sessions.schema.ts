@@ -10,9 +10,9 @@ import type { SessionEvent, SessionId } from '@deepseek-ai/dsh-session/types'
 import type { MessageId } from '@deepseek-ai/dsh-llm/brand'
 import type { RequestPayload, ResponseValue } from './rpc-map.ts'
 import type { Wire } from './rpc.schema.ts'
-import type {
-  HistoryEntry, ModelCatalogFailure, ModelCatalogModel, ModelProviderGroup, ModelReasoning,
-  ModelReasoningEffort, ModelSelection, SessionListMetadata, SessionProjectionsBlock, SessionSearchItem, SessionSummary,
+import { WORKSPACE_FILE_SEARCH_RESULT_LIMIT, type
+HistoryEntry, ModelCatalogFailure, ModelCatalogModel, ModelProviderGroup, ModelReasoning,
+ModelReasoningEffort, ModelSelection, SessionListMetadata, SessionProjectionsBlock, SessionSearchItem, SessionSummary, WorkspaceFileItem,
 } from './sessions.ts'
 import type { ToolEventView } from './events.ts'
 import type { AttachmentIdType, ImageAttachmentLimits, ImageAttachmentRef } from '@deepseek-ai/dsh-attachment'
@@ -97,6 +97,25 @@ export const sessionSearchValueSchema = z.object({
   items: z.array(sessionSearchItemSchema).max(SESSION_SEARCH_RESULT_LIMIT),
   hasMore: z.boolean(),
 }) satisfies z.ZodType<Wire<ResponseValue<'session.search'>>>
+
+/** session.searchWorkspaceFiles request payload. */
+export const sessionSearchWorkspaceFilesRequestSchema = z.object({
+  sessionId: sessionIdSchema,
+  query: z.string().max(SESSION_SEARCH_QUERY_MAX_CHARS)
+    .refine(query => !query.includes('\0'), { message: 'workspace file query must not contain NUL' }),
+}) satisfies z.ZodType<Wire<RequestPayload<'session.searchWorkspaceFiles'>>>
+
+/** One workspace-relative path in a file-reference search result. */
+export const workspaceFileItemSchema = z.object({
+  path: z.string().min(1),
+  kind: z.enum(['directory', 'file']),
+}) satisfies z.ZodType<Wire<WorkspaceFileItem>>
+
+/** session.searchWorkspaceFiles response value. */
+export const sessionSearchWorkspaceFilesValueSchema = z.object({
+  items: z.array(workspaceFileItemSchema).max(WORKSPACE_FILE_SEARCH_RESULT_LIMIT),
+  hasMore: z.boolean(),
+}) satisfies z.ZodType<Wire<ResponseValue<'session.searchWorkspaceFiles'>>>
 
 /** session.create request payload (at most one of workspaceId / cwd). */
 export const sessionCreateRequestSchema = z.object({

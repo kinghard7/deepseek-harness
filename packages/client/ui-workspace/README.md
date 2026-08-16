@@ -2,7 +2,7 @@
 
 English | [中文](README.zh.md)
 
-Shared Workspace browser and picker plugin. `WorkspaceBrowser` fills the sidebar's `sidebar.workspaces` slot, while `WorkspacePicker` fills the page-local Session Intent hero's `conversation.hero.workspace` slot; both surfaces use the same Workspace menu and add flow.
+Shared Workspace browser and picker plugin. `WorkspaceBrowser` fills the sidebar's `sidebar.workspaces` slot, while `WorkspacePicker` fills the page-local Session Intent hero's `conversation.hero.workspace` slot; both surfaces use the same Workspace menu and add flow. Its browser half also registers the `@` `workspace-file` source: candidates come from the Host's bounded, session-addressed path lookup rooted at the Session header's `cwd`; an empty query shows one top-level page, while a non-empty path fragment searches descendants. Picks insert a literal relative `@path` reference and never read file contents.
 
 The browser renders grouped or flat Session rows from the global runtime hooks and owns Workspace add/rename/reorder plus Session reorder. A Workspace remembers whether it is closed or showing Sessions; an open Workspace shows five Sessions by default, offers a transient **Show more** control for the remainder, and returns to five after the whole Workspace is closed and reopened. Creating a Session from a Workspace row first opens that group so the new row remains visible when the Session state arrives. Once the Workspace list baseline is ready, browser-persisted expansion and Session-order records retain only current Workspace ids plus Ungrouped and the flat-list account. View options combine grouping with one browser-persisted Session order per account: real Workspaces initialize from `WorkspaceView.sessionIds`, while Ungrouped and the cross-Workspace flat list initialize from recency. **Manual** and **Last updated** apply in either presentation. Entering Last updated performs a complete recency sort and later user prompts or steers promote their Session once, while entering Manual preserves every current position and disables later promotion. Dragging edits the current order in either mode; Manual-mode drags for real Workspaces also update the Host Session account, while Ungrouped and flat-list orders remain browser-local because neither has one Workspace account. Flat rows omit the empty leading status slot because they have no parent hierarchy, but retain it when a Session status is visible. Workspace drag order is Host-durable in either Session order mode.
 
@@ -22,11 +22,19 @@ The shared sidebar projection hides rows whose durable Session summary has `orig
 
 ## Model Experience
 
-None, as the picker is browser chrome; nothing here reaches a model request.
+### Explicit workspace file reference
+
+#### What the model sees
+
+Selecting a `@` workspace-file candidate inserts its workspace-relative path as literal `@path` text in the ordinary user message. The browser never reads file content or resolves the text into another model input; the agent uses its ordinary filesystem tools when it needs the referenced path.
+
+#### Token effect
+
+One selected path adds its literal text to the new user message. Opening the menu and searching candidates add no model tokens.
 
 #### KV Cache effect
 
-None; this package neither assembles nor sends a provider request.
+Append-only: the selected path appears only in the new user message and does not change an earlier request prefix.
 
 ## Known Limitations and Deferred Work
 

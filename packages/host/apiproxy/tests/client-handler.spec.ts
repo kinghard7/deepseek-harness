@@ -37,6 +37,7 @@ function scriptedApi(overrides: {
     sessions: {
       list: r => ok(r, { items: [] }),
       search: r => ok(r, { items: [], hasMore: false }),
+      searchWorkspaceFiles: r => ok(r, { items: [], hasMore: false }),
       create: r => ok(r, { sessionId: sid('s-new') }),
       history: r => ok(r, {
         events: [],

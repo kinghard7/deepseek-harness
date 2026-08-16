@@ -10,6 +10,8 @@
  */
 import type { HostObservable } from '@deepseek-ai/dsh-client-ui-slots'
 import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
+// Type-only: pulls the input trigger Context merge (ctx.inputTriggers).
+import type {} from '@deepseek-ai/dsh-client-ui-input-trigger/client'
 // Type-only: pulls the locale plugin's Context merge (ctx.locale).
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type { WorkspaceBrowserInjected, WorkspacePickerInjected } from './contract/slots.ts'
@@ -42,7 +44,7 @@ const NS = 'workspace'
  * provides a waitable service. apply therefore depends on each slot
  * declaration through `slots.inject()` instead of assuming order.
  */
-export const inject = ['slots', 'sessions', 'workspaces', 'locale']
+export const inject = ['slots', 'sessions', 'workspaces', 'locale', 'inputTriggers']
 
 /**
  * Register the browser and picker once their slot declarations are on the
@@ -52,6 +54,23 @@ export const inject = ['slots', 'sessions', 'workspaces', 'locale']
  */
 export function apply(ctx: ClientContext): void {
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'ui-workspace: dictionaries')
+
+  const workspaceFileSource: Parameters<typeof ctx.inputTriggers.registerSource>[0] = {
+    trigger: '@',
+    name: 'workspace-file',
+    order: -10,
+    async candidates(session, { query, signal }) {
+      const result = await ctx.workspaces.searchWorkspaceFiles(session.sessionId, query, signal)
+      return result.items.map(item => ({
+        name: item.path,
+        description: item.kind === 'directory' ? '目录' : '文件',
+      }))
+    },
+    onPick({ candidate }) {
+      return { text: `@${candidate.name} ` }
+    },
+  }
+  ctx.effect(() => ctx.inputTriggers.registerSource(workspaceFileSource), 'ui-workspace: @ file source')
 
   const searchSessions: WorkspaceBrowserInjected['searchSessions'] = async (query, signal) => {
     const result = await ctx.sessions.search(query, signal)

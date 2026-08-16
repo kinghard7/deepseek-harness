@@ -21,6 +21,10 @@ import {
   DEFAULT_SESSION_LOG_COMPRESSION_LEVEL,
   type SessionLogCompressionLevel,
 } from './session-export.ts'
+import {
+  DEFAULT_WORKSPACE_FILE_SEARCH_MAX_ENTRIES,
+  DEFAULT_WORKSPACE_FILE_SEARCH_MAX_RESULTS,
+} from './workspace-file-search.ts'
 
 export type * from './api/index.ts'
 export { RpcId } from './api/rpc.ts'
@@ -59,6 +63,16 @@ export interface Config {
    * @default 1024
    */
   coldBlankProbeMaxBytes?: number
+  /**
+   * Maximum workspace file-reference candidates returned to one Web query.
+   * @default 100
+   */
+  workspaceFileSearchMaxResults?: number
+  /**
+   * Maximum workspace entries inspected to satisfy one Web file-reference query.
+   * @default 10000
+   */
+  workspaceFileSearchMaxEntries?: number
 }
 
 /**
@@ -77,6 +91,9 @@ export class ApiProxyService extends Service implements ApiProxy {
     sessionExportCompressionLevel: z.number().step(1).min(0).max(9)
       .default(DEFAULT_SESSION_LOG_COMPRESSION_LEVEL) as z<SessionLogCompressionLevel>,
     coldBlankProbeMaxBytes: z.natural().default(DEFAULT_COLD_BLANK_PROBE_MAX_BYTES),
+    workspaceFileSearchMaxResults: z.natural().min(1).max(DEFAULT_WORKSPACE_FILE_SEARCH_MAX_RESULTS)
+      .default(DEFAULT_WORKSPACE_FILE_SEARCH_MAX_RESULTS),
+    workspaceFileSearchMaxEntries: z.natural().min(1).default(DEFAULT_WORKSPACE_FILE_SEARCH_MAX_ENTRIES),
   })
 
   readonly sessions: ApiProxy['sessions']
@@ -106,6 +123,12 @@ export class ApiProxyService extends Service implements ApiProxy {
       ...(config.coldBlankProbeMaxBytes === undefined
         ? {}
         : { coldBlankProbeMaxBytes: config.coldBlankProbeMaxBytes }),
+      ...(config.workspaceFileSearchMaxResults === undefined
+        ? {}
+        : { workspaceFileSearchMaxResults: config.workspaceFileSearchMaxResults }),
+      ...(config.workspaceFileSearchMaxEntries === undefined
+        ? {}
+        : { workspaceFileSearchMaxEntries: config.workspaceFileSearchMaxEntries }),
     })
     this.sessions = api.sessions
     this.subagents = api.subagents

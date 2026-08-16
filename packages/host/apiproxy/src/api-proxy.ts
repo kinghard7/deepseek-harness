@@ -109,6 +109,11 @@ import {
   inspectApiRemoteSession,
 } from '@deepseek-ai/dsh-api-remotes'
 import { canOpenNativePath, openNativePath, openNativeTextFile } from './native-path-opener.ts'
+import {
+  DEFAULT_WORKSPACE_FILE_SEARCH_MAX_ENTRIES,
+  DEFAULT_WORKSPACE_FILE_SEARCH_MAX_RESULTS,
+  searchWorkspaceFiles as findWorkspaceFiles,
+} from './workspace-file-search.ts'
 
 /** Page size when history is called without maxMessages. */
 const DEFAULT_MAX_MESSAGES = 50
@@ -659,6 +664,10 @@ export interface ApiProxyDefaults {
   sessionExportCompressionLevel?: SessionLogCompressionLevel
   /** Maximum artifact size eligible for one cold blankness read. */
   coldBlankProbeMaxBytes?: number
+  /** Maximum file-reference candidates returned to one browser query. */
+  workspaceFileSearchMaxResults?: number
+  /** Maximum workspace entries inspected by one browser file-reference query. */
+  workspaceFileSearchMaxEntries?: number
   /**
    * Whether handing a path to the native opener can work at all — the
    * `hasDocument` capability the preset roster reports, and the switch
@@ -2159,6 +2168,38 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
           return err(request, {
             code: 'internal',
             message: `session search failed: ${String(error)}`,
+            details: {},
+          })
+        }
+      },
+
+      async searchWorkspaceFiles(request, signal) {
+        const { sessionId, query } = request.payload
+        if (isAborted(signal)) {
+          return err(request, { code: 'cancelled', message: 'workspace file search was aborted', details: {} })
+        }
+        const found = await agentFor(sessionId)
+        if ('error' in found) return err(request, found.error)
+        const cwd = found.agent.session.header.cwd
+        if (cwd === undefined) {
+          return err(request, {
+            code: 'internal',
+            message: `workspace file search is unavailable for session "${sessionId}": no working directory is recorded`,
+            details: {},
+          })
+        }
+        try {
+          return ok(request, await findWorkspaceFiles(cwd, query, {
+            maxResults: defaults.workspaceFileSearchMaxResults ?? DEFAULT_WORKSPACE_FILE_SEARCH_MAX_RESULTS,
+            maxEntries: defaults.workspaceFileSearchMaxEntries ?? DEFAULT_WORKSPACE_FILE_SEARCH_MAX_ENTRIES,
+          }, signal))
+        } catch (error: unknown) {
+          if (isAborted(signal)) {
+            return err(request, { code: 'cancelled', message: 'workspace file search was aborted', details: {} })
+          }
+          return err(request, {
+            code: 'internal',
+            message: `workspace file search failed for session "${sessionId}": ${String(error)}`,
             details: {},
           })
         }

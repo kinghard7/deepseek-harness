@@ -6,7 +6,7 @@
  * the concrete class. Widening this interface is the explicit act of
  * widening what features may do to the workspaces domain.
  */
-import type { DirectoryListing, SessionId, WorkspaceId, WorkspaceView } from '@deepseek-ai/dsh-api-remotes/client'
+import type { DirectoryListing, SessionId, WorkspaceFileItem, WorkspaceId, WorkspaceView } from '@deepseek-ai/dsh-api-remotes/client'
 import type { WorkspaceListState } from '../workspaces/service.ts'
 import type { ObservableSnapshot } from './store.ts'
 
@@ -46,6 +46,17 @@ export interface IWorkspaces {
    * @returns the level's listing with breadcrumb ancestry.
    */
   listDirectory(path?: string, signal?: AbortSignal): Promise<DirectoryListing>
+  /**
+   * Search file and directory paths inside one session's working directory.
+   * @param sessionId - Session whose recorded cwd is the search root.
+   * @param query - Empty for a top-level listing; otherwise a relative path fragment.
+   * @param signal - Aborts the Host scan when this input query is superseded.
+   * @returns workspace-relative path candidates and whether the scan was truncated.
+   */
+  searchWorkspaceFiles(sessionId: SessionId, query: string, signal?: AbortSignal): Promise<{
+    items: WorkspaceFileItem[]
+    hasMore: boolean
+  }>
   /**
    * Create one child directory through the Host's `browse` capability.
    * @param path - absolute existing parent directory.

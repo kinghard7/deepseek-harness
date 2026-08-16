@@ -24,6 +24,9 @@
       "path": "../runtime"
     },
     {
+      "path": "../ui-input-trigger"
+    },
+    {
       "path": "../ui-sidebar"
     },
     {
